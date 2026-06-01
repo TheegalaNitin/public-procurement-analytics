@@ -206,7 +206,7 @@ display_cols = [c for c in df.columns if c != "id"]
 styled = (
     df[display_cols]
     .style
-    .applymap(colour_severity, subset=["Risiko"])
+    .map(colour_severity, subset=["Risiko"])
 )
 st.dataframe(styled, use_container_width=True, hide_index=True)
 
