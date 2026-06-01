@@ -1,9 +1,0 @@
-procurement.db 
-licence.key 
-pipeline.log 
-.env 
-venv/ 
-__pycache__/ 
-data/raw/ 
-data/staging/ 
-.streamlit/secrets.toml 
