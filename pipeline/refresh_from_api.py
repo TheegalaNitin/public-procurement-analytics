@@ -18,11 +18,12 @@ TED_URL = "https://api.ted.europa.eu/v3/notices/search"
 
 # can-standard = Contract Award Notice (has winner + value).
 # We only want award notices since those are what the rules analyse.
-QUERY = "place-of-performance=DE501 AND notice-type=can-standard"
+QUERY = "place-of-performance IN (DE501 DE502) AND notice-type=can-standard"
 
 FIELDS = [
     "publication-number", "buyer-name", "winner-name",
-    "total-value", "classification-cpv", "dispatch-date", "notice-type",
+    "total-value", "classification-cpv", "dispatch-date",
+    "notice-type", "place-of-performance",
 ]
 
 
@@ -68,6 +69,7 @@ def load(notices):
             cpv = str(_text(n.get("classification-cpv")) or "")[:8]
             date = (str(_text(n.get("dispatch-date")) or "")
                     .replace("Z", "") or None)
+            nuts = str(_text(n.get("place-of-performance")) or "DE50")
             try:
                 amount = float(_text(n.get("total-value")) or 0)
             except (ValueError, TypeError):
@@ -84,7 +86,7 @@ def load(notices):
                 f"TED_{pub}", "ted_api", str(buyer), str(buyer),
                 str(winner), str(winner).upper().strip(), amount,
                 cpv, cpv[:2] if cpv else "", get_cpv_label(cpv),
-                date, "OTHER", "DE501",
+                date, "OTHER", nuts,
             ])
             inserted += 1
         except Exception as e:
