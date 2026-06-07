@@ -84,7 +84,7 @@ def load(notices):
                     award_date, procedure_type, nuts_code, is_framework
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, [
-                f"TED_{pub}", "ted_api", str(buyer), str(buyer),
+                str(pub), "ted_api", str(buyer), str(buyer),
                 str(winner), str(winner).upper().strip(), amount,
                 cpv, cpv[:2] if cpv else "", get_cpv_label(cpv),
                 date, "OTHER", nuts,
