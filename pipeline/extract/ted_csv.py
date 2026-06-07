@@ -20,6 +20,14 @@ RAW_TED.mkdir(parents=True, exist_ok=True)
 BREMEN_NUTS_PREFIX = "DE50"
 
 PROCEDURE_MAP = {
+    "OPE": "OPEN",
+    "RES": "RESTRICTED",
+    "NIC": "NEGOTIATED",        # negotiated without prior call (no competition)
+    "NIW": "NEGOTIATED",
+    "NOC": "NEGOTIATED",
+    "NOW": "NEGOTIATED",
+    "COD": "COMPETITIVE_DIALOGUE",
+    "CPN": "NEGOTIATED",
     "1": "OPEN", "2": "RESTRICTED", "3": "NEGOTIATED",
     "4": "DIRECT", "6": "NEGOTIATED", "9": "OTHER",
 }
@@ -56,6 +64,15 @@ def get_cpv_label(cpv_code: str) -> str:
     division = str(cpv_code).strip()[:2]
     return CPV_LABELS.get(division, "")
 
+import re
+
+def _extract_notice_number(url: str) -> str:
+    """Extract clean notice number like '2-2023' from the TED URL.
+    URL format: ted.europa.eu/udl?uri=TED:NOTICE:2-2023:TEXT:EN:HTML"""
+    if not url or str(url) == "nan":
+        return "UNKNOWN"
+    match = re.search(r'NOTICE:(\d+-\d{4})', str(url))
+    return match.group(1) if match else "UNKNOWN"
 
 def load_ted_csv(csv_path: str) -> int:
     path = Path(csv_path)
@@ -124,11 +141,11 @@ def load_ted_csv(csv_path: str) -> int:
                         contract_id, source, buyer_name, buyer_dept,
                         vendor_name, vendor_name_norm,
                         amount_eur, cpv_code, cpv_division,
-                        cpv_label, award_date, procedure_type, nuts_code
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        cpv_label, award_date, procedure_type, nuts_code, is_framework, num_bidders, is_gpa
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, [
-                    str(row.get("ID_NOTICE_CAN", ""))
-                        + "_" + str(row.get("ID_AWARD", "")),
+                    
+                    _extract_notice_number(row.get("TED_NOTICE_URL", "")),
                     "ted_csv",
                     row["buyer_clean"],
                     row["buyer_clean"],
@@ -141,6 +158,9 @@ def load_ted_csv(csv_path: str) -> int:
                     row["award_date_clean"],
                     row["procedure_clean"],
                     str(row.get("TAL_LOCATION_NUTS", "DE50")),
+                    str(row.get("B_FRA_AGREEMENT", "")).upper() in ("Y", "1", "TRUE", "YES"),
+                    int(row["NUMBER_OFFERS"]) if pd.notna(row.get("NUMBER_OFFERS")) else None,
+                    str(row.get("B_GPA", "")).upper() in ("Y", "1", "TRUE", "YES"),
                 ])
                 inserted_this_chunk += 1
             except Exception as e:

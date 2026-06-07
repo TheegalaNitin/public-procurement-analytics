@@ -38,7 +38,11 @@ CREATE TABLE IF NOT EXISTS contracts (
     award_date      DATE,
     procedure_type  VARCHAR,        -- OPEN|RESTRICTED|NEGOTIATED|DIRECT
     nuts_code       VARCHAR,
-    ingested_at     TIMESTAMP DEFAULT now()
+    is_framework    BOOLEAN DEFAULT false,
+    num_bidders     INTEGER,
+    is_gpa          BOOLEAN DEFAULT false,
+    ingested_at     TIMESTAMP DEFAULT now(),
+    jurisdiction     VARCHAR DEFAULT 'bremen_state'        -- tagged later (e.g. 'bremen_state' vs 'external')
 );
 
 CREATE TABLE IF NOT EXISTS cpv_reference (

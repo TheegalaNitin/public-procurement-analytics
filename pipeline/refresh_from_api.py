@@ -18,12 +18,13 @@ TED_URL = "https://api.ted.europa.eu/v3/notices/search"
 
 # can-standard = Contract Award Notice (has winner + value).
 # We only want award notices since those are what the rules analyse.
-QUERY = "place-of-performance IN (DE501 DE502) AND notice-type=can-standard"
-
+QUERY = ("place-of-performance IN (DE501 DE502) "
+         "AND notice-type=can-standard "
+         "SORT BY publication-number DESC")
 FIELDS = [
     "publication-number", "buyer-name", "winner-name",
     "total-value", "classification-cpv", "dispatch-date",
-    "notice-type", "place-of-performance",
+    "notice-type", "place-of-performance", "contract-framework-agreement",
 ]
 
 
@@ -80,13 +81,14 @@ def load(notices):
                     contract_id, source, buyer_name, buyer_dept,
                     vendor_name, vendor_name_norm, amount_eur,
                     cpv_code, cpv_division, cpv_label,
-                    award_date, procedure_type, nuts_code
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    award_date, procedure_type, nuts_code, is_framework
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, [
                 f"TED_{pub}", "ted_api", str(buyer), str(buyer),
                 str(winner), str(winner).upper().strip(), amount,
                 cpv, cpv[:2] if cpv else "", get_cpv_label(cpv),
                 date, "OTHER", nuts,
+               str(_text(n.get("contract-framework-agreement")) or "").lower() in ("true", "yes", "1"), 
             ])
             inserted += 1
         except Exception as e:

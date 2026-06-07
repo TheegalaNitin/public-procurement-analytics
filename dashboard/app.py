@@ -179,7 +179,11 @@ query = f"""
         ROUND(a.risk_eur)        AS "Risikobetrag (EUR)",
         c.procedure_type         AS Verfahren,
         c.award_date::VARCHAR    AS Auftragsdatum,
+        c.contract_id            AS Notiz_ID,
+        'https://ted.europa.eu/en/notice/-/detail/' || c.contract_id AS TED_Link,
         a.description            AS Beschreibung
+        
+        
     FROM anomalies a
     JOIN contracts c ON c.contract_id = a.contract_id
     WHERE {where_sql}
@@ -208,8 +212,17 @@ styled = (
     .style
     .map(colour_severity, subset=["Risiko"])
 )
-st.dataframe(styled, use_container_width=True, hide_index=True)
-
+st.dataframe(
+    styled,
+    use_container_width=True,
+    hide_index=True,
+    column_config={
+        "TED_Link": st.column_config.LinkColumn(
+            "TED Quelle",
+            display_text="Notiz öffnen ↗",
+        ),
+    },
+)
 st.divider()
 
 # ── Case detail + review ───────────────────────────────────────────────
@@ -257,10 +270,36 @@ else:
         f"({len(vendor_history)} Einträge)"
     ):
         st.dataframe(vendor_history, use_container_width=True, hide_index=True)
+# Comparable contracts in the same CPV category — puts the outlier in context
+    comparables = con.execute("""
+        SELECT
+            vendor_name        AS Lieferant,
+            ROUND(amount_eur)  AS "Betrag (EUR)",
+            procedure_type     AS Verfahren,
+            num_bidders        AS Bieter,
+            award_date::VARCHAR AS Datum
+        FROM contracts
+        WHERE cpv_label = (
+            SELECT cpv_label FROM contracts WHERE vendor_name = ? LIMIT 1
+        )
+        AND jurisdiction = 'bremen_state'
+        AND amount_eur > 0
+        ORDER BY amount_eur DESC
+        LIMIT 10
+    """, [row["Lieferant"]]).df()
 
+    st.markdown("**Vergleichbare Vergaben derselben Leistungsart**")
+    st.caption(
+        "So lässt sich einordnen, ob der markierte Betrag wirklich "
+        "außergewöhnlich ist — im Vergleich zu ähnlichen Aufträgen in Bremen."
+    )
+    st.dataframe(comparables, use_container_width=True, hide_index=True)
     st.markdown("**Prüfvermerk**")
-    if not lic.can_run_pipeline:
-        st.warning("Lizenzverlängerung erforderlich, um Fälle zu bearbeiten.")
+    if True:  # review writing disabled — dashboard is read-only
+        st.info(
+            "📋 Prüfvermerke sind in dieser Ansicht deaktiviert. "
+            "Die Fälle werden über die Pipeline verwaltet."
+        )
     else:
         note = st.text_area(
             "Notiz (optional)",
