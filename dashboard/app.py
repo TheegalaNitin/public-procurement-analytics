@@ -23,7 +23,36 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# ── Password protection ────────────────────────────────────────────────
+def check_password():
+    """Simple password gate before the dashboard loads."""
+    def password_entered():
+        try:
+            correct = st.secrets["APP_PASSWORD"]
+        except Exception:
+            correct = "bremen2026"  # local fallback if no secret set
+        if st.session_state.get("password_input") == correct:
+            st.session_state["password_ok"] = True
+            del st.session_state["password_input"]
+        else:
+            st.session_state["password_ok"] = False
 
+    if st.session_state.get("password_ok"):
+        return True
+
+    st.markdown("### 🔒 Zugang zur Vergabe-Analyse")
+    st.text_input(
+        "Passwort", type="password",
+        key="password_input", on_change=password_entered,
+    )
+    if st.session_state.get("password_ok") is False:
+        st.error("Falsches Passwort.")
+    st.caption("Bitte geben Sie das Zugangspasswort ein.")
+    return False
+
+
+if not check_password():
+    st.stop()
 # ── Licence check ──────────────────────────────────────────────────────
 try:
     token_from_secrets = st.secrets.get("LICENCE_TOKEN", None)
@@ -178,7 +207,7 @@ query = f"""
         ROUND(c.amount_eur)      AS "Betrag (EUR)",
         ROUND(a.risk_eur)        AS "Risikobetrag (EUR)",
         c.procedure_type         AS Verfahren,
-        c.award_date::VARCHAR    AS Auftragsdatum,
+        strftime(c.award_date, '%d.%m.%Y') AS Auftragsdatum,
         c.contract_id            AS Notiz_ID,
         'https://ted.europa.eu/en/notice/-/detail/' || c.contract_id AS TED_Link,
         a.description            AS Beschreibung
@@ -254,7 +283,7 @@ else:
     st.info(f"📋 {row['Beschreibung']}")
 
     vendor_history = con.execute("""
-        SELECT award_date::VARCHAR AS Datum,
+        SELECT strftime(award_date, '%d.%m.%Y') AS Datum,
                buyer_dept          AS Behörde,
                procedure_type      AS Verfahren,
                cpv_label           AS Leistung,
@@ -277,7 +306,7 @@ else:
             ROUND(amount_eur)  AS "Betrag (EUR)",
             procedure_type     AS Verfahren,
             num_bidders        AS Bieter,
-            award_date::VARCHAR AS Datum
+            strftime(award_date, '%d.%m.%Y') AS Datum
         FROM contracts
         WHERE cpv_label = (
             SELECT cpv_label FROM contracts WHERE vendor_name = ? LIMIT 1
@@ -383,7 +412,7 @@ export_df = con.execute("""
         c.cpv_label          AS Leistungsart,
         ROUND(c.amount_eur)  AS "Betrag (EUR)",
         ROUND(a.risk_eur)    AS "Risikobetrag (EUR)",
-        c.award_date::VARCHAR AS Auftragsdatum,
+        strftime(c.award_date, '%d.%m.%Y') AS Auftragsdatum,
         a.reviewer_note      AS Prüfvermerk,
         a.flagged_at::VARCHAR AS Erkannt_am
     FROM anomalies a
